@@ -22,6 +22,8 @@ import isValidArbitraryValue from '../util/isValidArbitraryValue'
 import { generateRules } from './generateRules'
 import { hasContentChanged } from './cacheInvalidation.js'
 
+let MATCH_VARIANT = Symbol()
+
 function prefix(context, selector) {
   let prefix = context.tailwindConfig.prefix
   return typeof prefix === 'function' ? prefix(selector) : prefix + selector
@@ -215,13 +217,18 @@ function buildPluginApi(tailwindConfig, context, { variantList, variantMap, offs
     return context.tailwindConfig.prefix + identifier
   }
 
-  return {
+  let api = {
     addVariant(variantName, variantFunctions, options = {}) {
       variantFunctions = [].concat(variantFunctions).map((variantFunction) => {
         if (typeof variantFunction !== 'string') {
           // Safelist public API functions
-          return ({ modifySelectors, container, separator }) => {
-            return variantFunction({ modifySelectors, container, separator })
+          return ({ args, modifySelectors, container, separator }) => {
+            return variantFunction(
+              Object.assign(
+                { modifySelectors, container, separator },
+                variantFunction[MATCH_VARIANT] && { args }
+              )
+            )
           }
         }
 
@@ -444,7 +451,18 @@ function buildPluginApi(tailwindConfig, context, { variantList, variantMap, offs
         context.candidateRuleMap.get(prefixedIdentifier).push(withOffsets)
       }
     },
+    matchVariant: function (variants, options) {
+      for (let variant in variants) {
+        api.addVariant(
+          variant,
+          Object.assign(({ args }) => variants[variant](args), { [MATCH_VARIANT]: true }),
+          options
+        )
+      }
+    },
   }
+
+  return api
 }
 
 let fileModifiedMapCache = new WeakMap()
