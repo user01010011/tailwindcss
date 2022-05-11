@@ -353,10 +353,17 @@ function buildPluginApi(tailwindConfig, context, { variantList, variantMap, offs
 
         classList.add([prefixedIdentifier, options])
 
-        function wrapped(modifier, { isOnlyPlugin }) {
+        function wrapped(modifier, { isOnlyPlugin, candidate, candidatePlugin }) {
           let { type = 'any' } = options
           type = [].concat(type)
-          let [value, coercedType] = coerceValue(type, modifier, options, tailwindConfig)
+          let [value, coercedType] = coerceValue(
+            type,
+            modifier,
+            options,
+            tailwindConfig,
+            candidate,
+            candidatePlugin
+          )
 
           if (value === undefined) {
             return []
@@ -366,15 +373,36 @@ function buildPluginApi(tailwindConfig, context, { variantList, variantMap, offs
             return []
           }
 
+          // TODO: Can we remove this?
+          // This check is done in the candidate section
           if (!isValidArbitraryValue(value)) {
             return []
+          }
+
+          let tempIdentifier = identifier
+
+          if (typeof modifier === 'object') {
+            modifier = modifier.raw
+            if (candidate.negative && !tempIdentifier.startsWith('-')) {
+              tempIdentifier = `-${tempIdentifier}`
+            }
+          }
+
+          // TODO: Remove and use .className
+          let alphaModifierValue = candidatePlugin?.modifiers[0]?.value
+          if (alphaModifierValue !== undefined) {
+            if (typeof alphaModifierValue === 'object') {
+              alphaModifierValue = alphaModifierValue.raw
+            }
+
+            modifier += `/${alphaModifierValue}`
           }
 
           let ruleSets = []
             .concat(rule(value))
             .filter(Boolean)
             .map((declaration) => ({
-              [nameClass(identifier, modifier)]: declaration,
+              [nameClass(tempIdentifier, modifier)]: declaration,
             }))
 
           return ruleSets
@@ -405,10 +433,17 @@ function buildPluginApi(tailwindConfig, context, { variantList, variantMap, offs
 
         classList.add([prefixedIdentifier, options])
 
-        function wrapped(modifier, { isOnlyPlugin }) {
+        function wrapped(modifier, { isOnlyPlugin, candidate, candidatePlugin }) {
           let { type = 'any' } = options
           type = [].concat(type)
-          let [value, coercedType] = coerceValue(type, modifier, options, tailwindConfig)
+          let [value, coercedType] = coerceValue(
+            type,
+            modifier,
+            options,
+            tailwindConfig,
+            candidate,
+            candidatePlugin
+          )
 
           if (value === undefined) {
             return []
@@ -428,15 +463,26 @@ function buildPluginApi(tailwindConfig, context, { variantList, variantMap, offs
             }
           }
 
+          // TODO: Can we remove this?
+          // This check is done in the candidate section
           if (!isValidArbitraryValue(value)) {
             return []
+          }
+
+          let tempIdentifier = identifier
+
+          if (typeof modifier === 'object') {
+            modifier = modifier.raw
+            if (candidate.negative && !tempIdentifier.startsWith('-')) {
+              tempIdentifier = `-${tempIdentifier}`
+            }
           }
 
           let ruleSets = []
             .concat(rule(value))
             .filter(Boolean)
             .map((declaration) => ({
-              [nameClass(identifier, modifier)]: declaration,
+              [nameClass(tempIdentifier, modifier)]: declaration,
             }))
 
           return ruleSets
